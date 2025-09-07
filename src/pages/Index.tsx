@@ -8,21 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
-  const [selectedCategory, setSelectedCategory] = useState('Главная');
-  const [filteredNews, setFilteredNews] = useState(news);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [comments, setComments] = useState<{[key: number]: Array<{id: number, author: string, text: string, time: string}>}>({
-    1: [
-      { id: 1, author: 'Алексей К.', text: 'Очень важная новость для российской экономики!', time: '2 часа назад' },
-      { id: 2, author: 'Мария С.', text: 'Надеюсь, эти меры действительно помогут', time: '1 час назад' }
-    ],
-    2: [
-      { id: 1, author: 'Владимир П.', text: 'Наконец-то! Это решение давно назревало', time: '3 часа назад' }
-    ]
-  });
-  const [newComment, setNewComment] = useState('');
-  const [activeCommentSection, setActiveCommentSection] = useState<number | null>(null);
-
   const categories = ['Главная', 'Политика', 'Экономика', 'Технологии'];
 
   const news = [
@@ -78,6 +63,21 @@ const Index = () => {
     }
   ];
 
+  const [selectedCategory, setSelectedCategory] = useState('Главная');
+  const [filteredNews, setFilteredNews] = useState(news);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [comments, setComments] = useState<{[key: number]: Array<{id: number, author: string, text: string, time: string}>}>({
+    1: [
+      { id: 1, author: 'Алексей К.', text: 'Очень важная новость для российской экономики!', time: '2 часа назад' },
+      { id: 2, author: 'Мария С.', text: 'Надеюсь, эти меры действительно помогут', time: '1 час назад' }
+    ],
+    2: [
+      { id: 1, author: 'Владимир П.', text: 'Наконец-то! Это решение давно назревало', time: '3 часа назад' }
+    ]
+  });
+  const [newComment, setNewComment] = useState('');
+  const [activeCommentSection, setActiveCommentSection] = useState<number | null>(null);
+
   // Обновляем отфильтрованные новости с анимацией
   useEffect(() => {
     setIsTransitioning(true);
@@ -104,12 +104,20 @@ const Index = () => {
   const categoryStats = getCategoryStats();
 
   const addComment = (newsId: number) => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim()) {
+      alert('Комментарий не может быть пустым!');
+      return;
+    }
+    
+    if (newComment.length > 500) {
+      alert('Комментарий слишком длинный! Максимум 500 символов.');
+      return;
+    }
     
     const comment = {
       id: Date.now(),
       author: 'Вы',
-      text: newComment,
+      text: newComment.trim(),
       time: 'только что'
     };
     
@@ -118,6 +126,16 @@ const Index = () => {
       [newsId]: [...(prev[newsId] || []), comment]
     }));
     setNewComment('');
+    
+    // Показываем уведомление об успешном добавлении
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in';
+    notification.textContent = 'Комментарий добавлен!';
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
   };
 
   return (
@@ -279,19 +297,45 @@ const Index = () => {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-2">
-                        <Textarea
-                          placeholder="Написать комментарий..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          className="min-h-[60px] resize-none"
-                        />
-                        <Button 
-                          size="sm" 
-                          onClick={() => addComment(item.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                        >
-                          Отправить
-                        </Button>
+                        <div className="relative">
+                          <Textarea
+                            placeholder="Написать комментарий..."
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            className={`min-h-[60px] resize-none transition-colors ${
+                              newComment.length > 500 ? 'border-red-500 focus:border-red-500' : ''
+                            }`}
+                            maxLength={500}
+                          />
+                          <div className={`absolute bottom-2 right-2 text-xs ${
+                            newComment.length > 450 ? 'text-red-500' : 
+                            newComment.length > 400 ? 'text-orange-500' : 'text-gray-400'
+                          }`}>
+                            {newComment.length}/500
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-500 hover:text-gray-700"
+                              onClick={() => setNewComment('')}
+                            >
+                              <Icon name="RotateCcw" size={14} />
+                              <span className="ml-1">Очистить</span>
+                            </Button>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => addComment(item.id)}
+                            disabled={!newComment.trim() || newComment.length > 500}
+                            className="bg-red-500 hover:bg-red-600 text-white disabled:bg-gray-300 disabled:text-gray-500"
+                          >
+                            <Icon name="Send" size={14} />
+                            <span className="ml-1">Отправить</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
