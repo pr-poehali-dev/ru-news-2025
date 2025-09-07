@@ -77,6 +77,10 @@ const Index = () => {
   });
   const [newComment, setNewComment] = useState('');
   const [activeCommentSection, setActiveCommentSection] = useState<number | null>(null);
+  const [reactions, setReactions] = useState<{[key: number]: {likes: number, hearts: number, rockets: number, userReaction: string | null}}>({});
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [onlineUsers] = useState(Math.floor(Math.random() * 15000) + 10000);
 
   // Обновляем отфильтрованные новости с анимацией
   useEffect(() => {
@@ -102,6 +106,48 @@ const Index = () => {
   };
 
   const categoryStats = getCategoryStats();
+
+  const addReaction = (newsId: number, reactionType: string) => {
+    setReactions(prev => {
+      const current = prev[newsId] || { likes: 0, hearts: 0, rockets: 0, userReaction: null };
+      const newReactions = { ...current };
+      
+      if (current.userReaction === reactionType) {
+        // Удаляем реакцию
+        newReactions[reactionType as keyof typeof newReactions]--;
+        newReactions.userReaction = null;
+      } else {
+        // Удаляем старую реакцию
+        if (current.userReaction) {
+          newReactions[current.userReaction as keyof typeof newReactions]--;
+        }
+        // Добавляем новую
+        newReactions[reactionType as keyof typeof newReactions]++;
+        newReactions.userReaction = reactionType;
+      }
+      
+      return { ...prev, [newsId]: newReactions };
+    });
+  };
+
+  const getReactionCount = (newsId: number, type: string) => {
+    return reactions[newsId]?.[type as keyof typeof reactions[number]] || Math.floor(Math.random() * 50) + 5;
+  };
+
+  const isUserReacted = (newsId: number, type: string) => {
+    return reactions[newsId]?.userReaction === type;
+  };
+
+  // Имитация новых новостей
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 4000);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const addComment = (newsId: number) => {
     if (!newComment.trim()) {
@@ -139,15 +185,67 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
       {/* Заголовок и навигация */}
-      <header className="bg-white border-b-2 border-red-500 sticky top-0 z-50">
+      {/* Уведомление о новых новостях */}
+      {showNotification && (
+        <div className="fixed top-20 right-4 bg-red-500 text-white p-4 rounded-lg shadow-xl z-50 animate-fade-in max-w-sm">
+          <div className="flex items-center gap-2">
+            <Icon name="Bell" size={20} className="animate-pulse" />
+            <div>
+              <div className="font-semibold">Новая новость!</div>
+              <div className="text-sm opacity-90">Появились свежие обновления</div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowNotification(false)}
+              className="text-white hover:bg-red-600 p-1 h-auto"
+            >
+              <Icon name="X" size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <header className={`border-b-2 border-red-500 sticky top-0 z-50 transition-colors duration-300 ${
+        isDarkMode ? 'bg-gray-900' : 'bg-white'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-black">РОССИЯ НОВОСТИ</h1>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Icon name="Calendar" size={16} />
-              7 сентября 2025
+            <h1 className={`text-3xl font-bold transition-colors duration-300 ${
+              isDarkMode ? 'text-white' : 'text-black'
+            }`}>РОССИЯ НОВОСТИ</h1>
+            
+            <div className="flex items-center gap-4">
+              {/* Переключатель темы */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`transition-colors duration-300 ${
+                  isDarkMode ? 'text-yellow-400 hover:text-yellow-300' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Icon name={isDarkMode ? 'Sun' : 'Moon'} size={20} />
+              </Button>
+              
+              {/* Онлайн счетчик */}
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className={`text-sm transition-colors duration-300 ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {onlineUsers.toLocaleString()} онлайн
+                </span>
+              </div>
+              
+              <div className={`flex items-center gap-2 text-sm transition-colors duration-300 ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+              }`}>
+                <Icon name="Calendar" size={16} />
+                7 сентября 2025
+              </div>
             </div>
           </div>
           
@@ -186,7 +284,9 @@ const Index = () => {
           {/* Колонка новостей */}
           <div className="lg:col-span-2 space-y-6">
             {selectedCategory !== 'Главная' && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-fade-in">
+              <div className={`border rounded-lg p-4 animate-fade-in transition-colors duration-300 ${
+                isDarkMode ? 'bg-gray-800 border-red-400' : 'bg-red-50 border-red-200'
+              }`}>
                 <div className="flex items-center gap-2 text-red-700">
                   <Icon name="Filter" size={20} />
                   <span className="font-semibold">
@@ -197,7 +297,9 @@ const Index = () => {
             )}
             <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
               {filteredNews.map((item, index) => (
-              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow animate-fade-in">
+              <Card key={item.id} className={`overflow-hidden hover:shadow-lg transition-all duration-300 animate-fade-in hover:scale-[1.01] ${
+                isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'
+              }`}>
                 {index === 0 && item.urgent && (
                   <div className="bg-red-500 text-white px-4 py-2 flex items-center gap-2">
                     <Icon name="AlertTriangle" size={16} />
@@ -214,22 +316,30 @@ const Index = () => {
                       <span className="text-sm text-gray-500">{item.time}</span>
                     </div>
                     
-                    <h2 className="text-xl font-bold text-black mb-3 leading-tight">
+                    <h2 className={`text-xl font-bold mb-3 leading-tight transition-colors duration-300 ${
+                      isDarkMode ? 'text-white' : 'text-black'
+                    }`}>
                       {item.title}
                     </h2>
                     
-                    <p className="text-gray-700 mb-4 leading-relaxed">
+                    <p className={`mb-4 leading-relaxed transition-colors duration-300 ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       {item.summary}
                     </p>
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="w-6 h-6">
-                          <AvatarFallback className="text-xs bg-gray-200">
+                          <AvatarFallback className={`text-xs transition-colors duration-300 ${
+                            isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200'
+                          }`}>
                             {item.author.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-gray-600">{item.author}</span>
+                        <span className={`text-sm transition-colors duration-300 ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                        }`}>{item.author}</span>
                       </div>
                       
                       <Button 
@@ -238,12 +348,56 @@ const Index = () => {
                         onClick={() => setActiveCommentSection(
                           activeCommentSection === item.id ? null : item.id
                         )}
-                        className="text-gray-600 hover:text-red-600"
+                        className={`transition-colors duration-300 ${
+                          isDarkMode ? 'text-gray-400 hover:text-red-400' : 'text-gray-600 hover:text-red-600'
+                        }`}
                       >
                         <Icon name="MessageCircle" size={16} />
                         <span className="ml-1">
                           {comments[item.id]?.length || 0} комм.
                         </span>
+                      </Button>
+                    </div>
+                    
+                    {/* Система реакций */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addReaction(item.id, 'likes')}
+                        className={`px-2 py-1 h-auto transition-all duration-200 hover:scale-110 ${
+                          isUserReacted(item.id, 'likes') 
+                            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400' 
+                            : isDarkMode ? 'text-gray-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'
+                        }`}
+                      >
+                        👍 {getReactionCount(item.id, 'likes')}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addReaction(item.id, 'hearts')}
+                        className={`px-2 py-1 h-auto transition-all duration-200 hover:scale-110 ${
+                          isUserReacted(item.id, 'hearts') 
+                            ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' 
+                            : isDarkMode ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-600'
+                        }`}
+                      >
+                        ❤️ {getReactionCount(item.id, 'hearts')}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addReaction(item.id, 'rockets')}
+                        className={`px-2 py-1 h-auto transition-all duration-200 hover:scale-110 ${
+                          isUserReacted(item.id, 'rockets') 
+                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400' 
+                            : isDarkMode ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-600'
+                        }`}
+                      >
+                        🚀 {getReactionCount(item.id, 'rockets')}
                       </Button>
                     </div>
                   </div>
@@ -262,8 +416,12 @@ const Index = () => {
                 
                 {/* Секция комментариев */}
                 {activeCommentSection === item.id && (
-                  <div className="border-t bg-gray-50 p-4 animate-accordion-down">
-                    <h3 className="font-semibold mb-4 text-black">Комментарии</h3>
+                  <div className={`border-t p-4 animate-accordion-down transition-colors duration-300 ${
+                    isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50'
+                  }`}>
+                    <h3 className={`font-semibold mb-4 transition-colors duration-300 ${
+                      isDarkMode ? 'text-white' : 'text-black'
+                    }`}>Комментарии</h3>
                     
                     {/* Существующие комментарии */}
                     <div className="space-y-3 mb-4">
@@ -276,14 +434,18 @@ const Index = () => {
                           </Avatar>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-sm text-black">
+                              <span className={`font-semibold text-sm transition-colors duration-300 ${
+                                isDarkMode ? 'text-white' : 'text-black'
+                              }`}>
                                 {comment.author}
                               </span>
                               <span className="text-xs text-gray-500">
                                 {comment.time}
                               </span>
                             </div>
-                            <p className="text-gray-700 text-sm">{comment.text}</p>
+                            <p className={`text-sm transition-colors duration-300 ${
+                              isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                            }`}>{comment.text}</p>
                           </div>
                         </div>
                       ))}
