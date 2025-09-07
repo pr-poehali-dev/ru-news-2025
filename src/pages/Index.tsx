@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import Icon from '@/components/ui/icon';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('Главная');
+  const [filteredNews, setFilteredNews] = useState(news);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [comments, setComments] = useState<{[key: number]: Array<{id: number, author: string, text: string, time: string}>}>({
     1: [
       { id: 1, author: 'Алексей К.', text: 'Очень важная новость для российской экономики!', time: '2 часа назад' },
@@ -76,9 +78,30 @@ const Index = () => {
     }
   ];
 
-  const filteredNews = selectedCategory === 'Главная' 
-    ? news 
-    : news.filter(item => item.category === selectedCategory);
+  // Обновляем отфильтрованные новости с анимацией
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => {
+      const filtered = selectedCategory === 'Главная' 
+        ? news 
+        : news.filter(item => item.category === selectedCategory);
+      setFilteredNews(filtered);
+      setIsTransitioning(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [selectedCategory]);
+
+  const getCategoryStats = () => {
+    const stats = {
+      'Главная': news.length,
+      'Политика': news.filter(n => n.category === 'Политика').length,
+      'Экономика': news.filter(n => n.category === 'Экономика').length,
+      'Технологии': news.filter(n => n.category === 'Технологии').length
+    };
+    return stats;
+  };
+
+  const categoryStats = getCategoryStats();
 
   const addComment = (newsId: number) => {
     if (!newComment.trim()) return;
@@ -116,12 +139,23 @@ const Index = () => {
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
                 onClick={() => setSelectedCategory(category)}
-                className={selectedCategory === category 
-                  ? "bg-red-500 hover:bg-red-600 text-white font-semibold" 
-                  : "text-gray-700 border-gray-300 hover:bg-gray-50"
-                }
+                className={`transition-all duration-200 ${selectedCategory === category 
+                  ? "bg-red-500 hover:bg-red-600 text-white font-semibold scale-105 shadow-md" 
+                  : "text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-red-200"
+                }`}
               >
                 {category}
+                {categoryStats[category as keyof typeof categoryStats] > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className={`ml-2 text-xs ${selectedCategory === category 
+                      ? "bg-red-600 text-white" 
+                      : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {categoryStats[category as keyof typeof categoryStats]}
+                  </Badge>
+                )}
               </Button>
             ))}
           </nav>
@@ -133,7 +167,18 @@ const Index = () => {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Колонка новостей */}
           <div className="lg:col-span-2 space-y-6">
-            {filteredNews.map((item, index) => (
+            {selectedCategory !== 'Главная' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-fade-in">
+                <div className="flex items-center gap-2 text-red-700">
+                  <Icon name="Filter" size={20} />
+                  <span className="font-semibold">
+                    Показано новостей в разделе "{selectedCategory}": {filteredNews.length}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
+              {filteredNews.map((item, index) => (
               <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow animate-fade-in">
                 {index === 0 && item.urgent && (
                   <div className="bg-red-500 text-white px-4 py-2 flex items-center gap-2">
@@ -252,7 +297,20 @@ const Index = () => {
                   </div>
                 )}
               </Card>
-            ))}
+              ))}
+            </div>
+            
+            {filteredNews.length === 0 && !isTransitioning && (
+              <div className="text-center py-12 animate-fade-in">
+                <Icon name="Search" size={48} className="text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                  Новостей не найдено
+                </h3>
+                <p className="text-gray-500">
+                  В разделе "{selectedCategory}" пока нет новостей
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Боковая панель */}
